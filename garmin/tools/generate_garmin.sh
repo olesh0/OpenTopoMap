@@ -13,8 +13,8 @@ GIT_DIR=/home/garminotm/OpenTopoMap/garmin
 DATA_DIR=/home/garminotm/garmin_world
 
 # Programs
-SPLITTER_JAR=/home/garminotm/src/splitter-r602/splitter.jar
-MKGMAP_JAR=/home/garminotm/src/mkgmap-r4745/mkgmap.jar
+SPLITTER_JAR=/home/garminotm/src/splitter-r652/splitter.jar
+MKGMAP_JAR=/home/garminotm/src/mkgmap-r4905/mkgmap.jar
 TILESINPOLY_CMD=$GIT_DIR/tools/tiles_in_poly.py
 
 # Temp dirs
@@ -35,15 +35,22 @@ SEA_FILE=$DATA_DIR/sea-latest.zip
 DEM_FILE=$DATA_DIR/dem/viewfinderpanoramas.zip
 WWW_OUT_ROOT_DIR=/var/www/garmin.opentopomap.org
 
+# www/garmin.opentopomap.org/
 
 if [ ! -d $SPLITTER_OUTPUT_ROOT_DIR ]
 then
+	echo "Recursively creating directory for SPLITTER... $SPLITTER_OUTPUT_ROOT_DIR"
 	mkdir -p $SPLITTER_OUTPUT_ROOT_DIR
+else
+	echo "Directory: $SPLITTER_OUTPUT_ROOT_DIR already exists... Skipping creating"
 fi
 
 if [ ! -d $MKGMAP_OUTPUT_ROOT_DIR ]
 then
+	echo "Recursively creating directory for MKGMAP... $MKGMAP_OUTPUT_ROOT_DIR"
 	mkdir -p $MKGMAP_OUTPUT_ROOT_DIR
+else
+	echo "Directory: $MKGMAP_OUTPUT_ROOT_DIR already exists... Skipping creating"
 fi
 
 continents=("africa" "asia" "australia-oceania" "central-america" "europe" "north-america" "south-america")
@@ -67,9 +74,11 @@ do
 	continentdate=`stat -c=%y $DATA_DIR/$continent-latest.osm.pbf | cut -c2-11`
 	
 	echo "Split $continent..."
+	echo "Deleting: $SPLITTER_OUTPUT_ROOT_DIR/$continent..."
 	rm -rf $SPLITTER_OUTPUT_ROOT_DIR/$continent
 	mkdir -p $SPLITTER_OUTPUT_ROOT_DIR/$continent
-    java -Xmx10000m -jar $SPLITTER_JAR $DATA_DIR/$continent-latest.osm.pbf --output-dir=$SPLITTER_OUTPUT_ROOT_DIR/$continent --max-threads=32 --geonames-file=$DATA_DIR/cities15000.txt --mapid=$MAPID &> $SPLITTER_OUTPUT_ROOT_DIR/splitter-$continent.log
+    echo "Running: java -Xmx10000m -jar $SPLITTER_JAR $DATA_DIR/$continent-latest.osm.pbf --output-dir=$SPLITTER_OUTPUT_ROOT_DIR/$continent --max-threads=32 --geonames-file=$DATA_DIR/cities15000.txt --mapid=$MAPID &> $SPLITTER_OUTPUT_ROOT_DIR/splitter-$continent.log"
+	java -Xmx10000m -jar $SPLITTER_JAR $DATA_DIR/$continent-latest.osm.pbf --output-dir=$SPLITTER_OUTPUT_ROOT_DIR/$continent --max-threads=32 --geonames-file=$DATA_DIR/cities15000.txt --mapid=$MAPID &> $SPLITTER_OUTPUT_ROOT_DIR/splitter-$continent.log
 	
 	for polyfile in $DATA_DIR/download.geofabrik.de/$continent/*.poly
 	do
@@ -107,16 +116,30 @@ do
 			GMAPI=""
 		fi
 
+		echo "Running MKGMAP_JAR file..."
 		java -Xmx10000m -jar $MKGMAP_JAR --output-dir=$MKGMAP_OUTPUT_DIR --style-file=$MKGMAP_STYLE_FILE --description="OpenTopoMap ${countryname_short^} ${continentdate}" --area-name="OpenTopoMap ${countryname_short^} ${continentdate}" --overview-mapname="OpenTopoMap_${countryname_short^}" --family-name="OpenTopoMap ${countryname_short^} ${continentdate}" --family-id=$FAMILY_ID --series-name="OpenTopoMap ${countryname_short^} ${continentdate}" --bounds=$BOUNDS_FILE --precomp-sea=$SEA_FILE --dem=$DEM_FILE -c $MKGMAP_OPTS $REDUCED_DENSITY $GMAPI $mkgmapin $MKGMAP_TYP_FILE &> $MKGMAP_OUTPUT_DIR/mkgmap.log
+		
+		echo "Changing directoring into: $MKGMAP_OUTPUT_DIR"
 		cd $MKGMAP_OUTPUT_DIR
-		mv OpenTopoMap\ ${countryname^}\ ${continentdate}.gmap OpenTopoMap_${countryname^}.gmap
-		rm $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.zip
-		zip -r $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.zip OpenTopoMap_${countryname^}.gmap
-		rm -rf $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}.gmap
-		rm $MKGMAP_OUTPUT_DIR/53*.img $MKGMAP_OUTPUT_DIR/53*.tdb $MKGMAP_OUTPUT_DIR/ovm*.img $MKGMAP_OUTPUT_DIR/*.typ $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}.img $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}_mdr.img $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}.mdx $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}.tdb
-		mv $MKGMAP_OUTPUT_DIR/gmapsupp.img $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.img
-		touch -m --date="$continentdate" $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.img
-		touch $WWW_OUT_ROOT_DIR/$continent
+
+		echo "======================"
+		ls
+		echo "======================"
+
+		pwd
+
+		# echo "moving file: ! OpenTopoMap\ ${countryname^}\ ${continentdate}.gmap ! into OpenTopoMap_${countryname^}.gmap !"
+		# mv OpenTopoMap\ ${countryname^}.gmap OpenTopoMap_${countryname^}.gmap
+
+		# echo "removing file: $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.zip"
+		# rm $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.zip
+
+		# zip -r $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.zip OpenTopoMap_${countryname^}.gmap
+		# rm -rf $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}.gmap
+		# rm $MKGMAP_OUTPUT_DIR/53*.img $MKGMAP_OUTPUT_DIR/53*.tdb $MKGMAP_OUTPUT_DIR/ovm*.img $MKGMAP_OUTPUT_DIR/*.typ $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}.img $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}_mdr.img $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}.mdx $MKGMAP_OUTPUT_DIR/OpenTopoMap_${countryname^}.tdb
+		# mv $MKGMAP_OUTPUT_DIR/gmapsupp.img $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.img
+		# touch -m --date="$continentdate" $WWW_OUT_ROOT_DIR/$continent/$countryname/otm-$countryname.img
+		# touch $WWW_OUT_ROOT_DIR/$continent
 	done
 	
 	rm -rf $SPLITTER_OUTPUT_ROOT_DIR/$continent
